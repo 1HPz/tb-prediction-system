@@ -3,11 +3,7 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import joblib
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix
 import plotly.graph_objects as go
-import plotly.express as px
 
 # ตั้งค่าหน้าเว็บ
 st.set_page_config(
@@ -16,46 +12,152 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS สำหรับตกแต่ง
+# CSS สำหรับธีมสีเกรเดียนท์และตกแต่ง
 st.markdown("""
 <style>
+    /* Gradient Background */
+    .stApp {
+        background: linear-gradient(to bottom, #1c2396 0%, #282a4e 50%, #282a4e 100%);
+    }
+    
+    /* Main content styling */
     .main-header {
         font-size: 2.5rem;
-        color: #1f77b4;
+        color: #ffffff;
         text-align: center;
-        padding: 1rem;
-        background: linear-gradient(90deg, #e3f2fd 0%, #bbdefb 100%);
-        border-radius: 10px;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
         margin-bottom: 2rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     }
+    
+    /* Card styling */
+    .input-card {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        margin-bottom: 1rem;
+    }
+    
+    /* Prediction boxes */
     .prediction-box {
         padding: 2rem;
-        border-radius: 10px;
+        border-radius: 15px;
         text-align: center;
-        font-size: 1.5rem;
+        font-size: 1.8rem;
         font-weight: bold;
         margin: 2rem 0;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     }
+    
     .success-box {
-        background-color: #d4edda;
-        color: #155724;
-        border: 2px solid #c3e6cb;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
+    
     .death-box {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 2px solid #f5c6cb;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
     }
+    
+    /* Info card */
     .info-card {
-        background-color: #e3f2fd;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        backdrop-filter: blur(10px);
+    }
+    
+    /* Override Streamlit default colors */
+    .stSelectbox label, .stMultiSelect label, .stNumberInput label, .stRadio label {
+        color: #1c2396 !important;
+        font-weight: 600;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: bold;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 15px 0 rgba(116, 79, 168, 0.75);
+    }
+    
+    .stButton > button:hover {
+        box-shadow: 0 6px 20px 0 rgba(116, 79, 168, 0.95);
+        transform: translateY(-2px);
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(to bottom, #1c2396 0%, #282a4e 100%);
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: white;
+    }
+    
+    /* Text color for main area */
+    h1, h2, h3, p {
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ฟังก์ชันสร้างโมเดลตัวอย่าง (ในกรณีที่ยังไม่มีโมเดลที่ train แล้ว)
+# รายการ ICD-10
+ICD10_OPTIONS = [
+    'วัณโรคปอด ยืนยันด้วยผลการตรวจเสมหะโดยใช้กล้องจุลทรรศน์ อาจมีหรือไม่มีการเพาะเชื้อ',
+    'วัณโรคปอด ยืนยันด้วยผลการตรวจชิ้นเนื้อ',
+    'วัณโรคปอด ยืนยันด้วยผลการเพาะเชื้อเท่านั้น',
+    'วัณโรคระบบหายใจ ไม่ระบุรายละเอียด ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'วัณโรคปอด ผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อเป็นลบ',
+    'วัณโรคนอกปอด ต่อมน้ำเหลืองส่วนปลาย',
+    'Acute miliary tuberculosis of multiple sites',
+    'วัณโรคปอด ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'เยื่อหุ้มปอดอักเสบจากเชื้อวัณโรค ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'วัณโรคระบบหายใจส่วนอื่น ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'Acute miliary tuberculosis, Unspecified',
+    'วัณโรคระบบหายใจส่วนอื่น ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'วัณโรคปอด ไม่ได้ตรวจหาเชื้อและไม่ได้ตรวจชิ้นเนื้อ',
+    'วัณโรคนอกปอด ลำไส้ เยื่อบุช่องท้อง',
+    'วัณโรคนอกปอด กระดูกและข้อ',
+    'วัณโรคระบบหายใจ ไม่ระบุรายละเอียด ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'เยื่อหุ้มสมองอักเสบจากเชื้อวัณโรค (G01*)',
+    'เยื่อหุ้มปอดอักเสบจากเชื้อวัณโรค ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'วัณโรคระบบหายใจชนิดปฐมภูมิ ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'วัณโรคปอด ยืนยันโดยไม่ระบุวิธี',
+    'วัณโรคต่อมน้ำเหลืองในช่องอก ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'วัณโรคนอกปอด ระบบสืบพันธุ์และระบบทางเดินปัสสาวะ',
+    'วัณโรคชนิดแพร่เชื้อกระจายเป็นจุดเล็กๆ',
+    'วัณโรคนอกปอด ผิวหนัง',
+    'Tuberculosis of other specified',
+    'Miliary tuberculosis, unspecified',
+    'วัณโรคต่อมน้ำเหลืองในช่องอก ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'ฝีวัณโรคเยื่อหุ้มสมอง (G07*)',
+    'วัณโรคที่ส่วนอื่นของระบบประสาท',
+    'วัณโรคนอกปอด ตา',
+    'Other miliary tuberculosis',
+    'วัณโรคนอกปอด หู',
+    'วัณโรคกล่องเสียง ท่อลม และหลอดลม ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'Tuberculosis of adrenal glands',
+    'วัณโรคระบบประสาท ไม่ระบุรายละเอียด (G99.9*)',
+    'วัณโรคระบบหายใจชนิดปฐมภูมิ ไม่ระบุการยืนยันด้วยผลการตรวจหาเชื้อหรือการตรวจชิ้นเนื้อ',
+    'วัณโรคกล่องเสียง ท่อลม และหลอดลม ยืนยันด้วยผลการตรวจหาเชื้อและการตรวจชิ้นเนื้อ',
+    'โรคปอดอุดกั้นเรื้อรัง ไม่ระบุรายละเอียด',
+    'TUBERCULOSIS OF JAWS AND/OR TM',
+    'ไตวายเรื้อรัง ไม่ระบุรายละเอียด',
+    'เบาหวานชนิดที่ไม่ต้องพึ่งอินซูลิน ไม่มีภาวะแทรกซ้อน'
+]
+
+# ฟังก์ชันสร้างโมเดลตัวอย่าง
 @st.cache_resource
 def create_dummy_model():
     """สร้างโมเดลตัวอย่างสำหรับ demo"""
@@ -76,19 +178,24 @@ def create_dummy_model():
     np.random.seed(42)
     n_samples = 1000
     X_dummy = pd.DataFrame({
+        'gender': np.random.choice([0, 1], n_samples),
         'age': np.random.randint(18, 80, n_samples),
-        'ICD_10_0': np.random.choice([0, 1], n_samples),
-        'ICD_10_3': np.random.choice([0, 1], n_samples),
-        'ICD_10_4': np.random.choice([0, 1], n_samples),
-        'ICD_10_5': np.random.choice([0, 1], n_samples),
-        'pos_disease_0': np.random.choice([0, 1], n_samples),
-        'HIV_0': np.random.choice([0, 1], n_samples)
+        'weight': np.random.uniform(40, 100, n_samples),
+        'site_pulmonary': np.random.choice([0, 1], n_samples),
+        'site_extrapulmonary': np.random.choice([0, 1], n_samples),
+        'hiv_status': np.random.choice([0, 1, 2, 3], n_samples),
+        'comorbid_ckd': np.random.choice([0, 1], n_samples),
+        'comorbid_copd': np.random.choice([0, 1], n_samples),
+        'comorbid_dm': np.random.choice([0, 1], n_samples),
+        'comorbid_liver': np.random.choice([0, 1], n_samples),
+        'icd10_count': np.random.randint(0, 5, n_samples)
     })
     
     # สร้าง target แบบมีความสัมพันธ์กับ features
     y_dummy = ((X_dummy['age'] > 60).astype(int) + 
-               X_dummy['HIV_0'] + 
-               X_dummy['ICD_10_4'] + 
+               (X_dummy['hiv_status'] == 1).astype(int) + 
+               X_dummy['comorbid_ckd'] + 
+               X_dummy['comorbid_copd'] +
                np.random.choice([0, 1], n_samples, p=[0.7, 0.3])) > 1
     y_dummy = y_dummy.astype(int)
     
@@ -99,45 +206,23 @@ def create_dummy_model():
 @st.cache_resource
 def load_model():
     try:
-        # พยายามโหลดโมเดลที่ save ไว้
-        model = joblib.load('tb_model.pkl')
+        model = joblib.load('models/tb_model.pkl')
         st.sidebar.success("✅ โหลดโมเดลสำเร็จ")
     except:
-        # ถ้าไม่มี ให้สร้างโมเดลตัวอย่าง
         model = create_dummy_model()
         st.sidebar.info("ℹ️ กำลังใช้โมเดลตัวอย่างสำหรับ demo")
     return model
 
 # ฟังก์ชันทำนาย
 def predict_survival(model, input_data, threshold=0.6):
-    """
-    ทำนายผลลัพธ์โดยใช้ threshold ที่กำหนด
-    
-    Parameters:
-    - model: โมเดล XGBoost ที่ train แล้ว
-    - input_data: DataFrame ของข้อมูลที่ต้องการทำนาย
-    - threshold: ค่า threshold สำหรับการจำแนกประเภท (default 0.6)
-    
-    Returns:
-    - prediction: 0 (Death) หรือ 1 (Success)
-    - probability: ความน่าจะเป็นของการเสียชีวิต (class 0)
-    """
-    # ทำนายความน่าจะเป็น
+    """ทำนายผลลัพธ์โดยใช้ threshold ที่กำหนด"""
     proba = model.predict_proba(input_data)[0]
-    
-    # proba[0] = ความน่าจะเป็นของการรอดชีวิต (Success)
-    # proba[1] = ความน่าจะเป็นของการเสียชีวิต (Death)
-    
-    # ใช้ threshold ในการตัดสินใจ
-    # ถ้าความน่าจะเป็นของการเสียชีวิต (proba[1]) >= threshold แสดงว่าเสียชีวิต
     prediction = 1 if proba[1] >= threshold else 0
-    
     return prediction, proba
 
 # Header
-st.markdown('<div class="main-header">🏥 ระบบทำนายอัตรารอดชีวิตจากโรควัณโรคปอด</div>', 
+st.markdown('<div class="main-header">🏥 ระบบทำนายอัตรารอดชีวิตจากโรควัณโรคปอด<br>Tuberculosis Survival Prediction System</div>', 
             unsafe_allow_html=True)
-st.markdown("### 📊 Tuberculosis Survival Prediction System (Threshold = 0.6)")
 
 # โหลดโมเดล
 model = load_model()
@@ -148,40 +233,81 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.markdown("## 📝 กรอกข้อมูลผู้ป่วย")
     
-    # อายุ
-    age = st.slider(
+    # 1. Gender
+    gender = st.radio(
+        "👤 เพศ (Gender)",
+        options=["ชาย", "หญิง"],
+        horizontal=True
+    )
+    gender_value = 1 if gender == "ชาย" else 0
+    
+    # 2. Age
+    age = st.number_input(
         "🎂 อายุ (Age)",
         min_value=0,
-        max_value=100,
+        max_value=120,
         value=45,
-        help="อายุของผู้ป่วย"
+        step=1,
+        help="กรุณาระบุอายุเป็นตัวเลข"
     )
     
+    # 3. Weight
+    weight = st.number_input(
+        "⚖️ น้ำหนัก (Weight) กิโลกรัม",
+        min_value=0.0,
+        max_value=300.0,
+        value=60.0,
+        step=0.1,
+        format="%.1f",
+        help="กรุณาระบุน้ำหนักเป็นตัวเลข (ทศนิยมได้)"
+    )
+    
+    # 4. Site of disease
+    site_disease = st.selectbox(
+        "🫁 ตำแหน่งของโรค (Site of Disease)",
+        options=["ในปอด", "นอกปอด", "ในและนอกปอด"],
+        help="เลือกตำแหน่งของโรควัณโรค"
+    )
+    site_pulmonary = 1 if site_disease in ["ในปอด", "ในและนอกปอด"] else 0
+    site_extrapulmonary = 1 if site_disease in ["นอกปอด", "ในและนอกปอด"] else 0
+    
+    # 5. HIV status
+    hiv_status = st.selectbox(
+        "🦠 สถานะ HIV (HIV Status)",
+        options=["Negative", "Positive", "รอผล", "ไม่ระบุ"],
+        help="เลือกสถานะการติดเชื้อ HIV"
+    )
+    hiv_status_map = {"Negative": 0, "Positive": 1, "รอผล": 2, "ไม่ระบุ": 3}
+    hiv_status_value = hiv_status_map[hiv_status]
+    
+    # 6. Comorbidities
+    st.markdown("### 🏥 โรคประจำตัว (Comorbidities)")
+    comorbidities = st.multiselect(
+        "เลือกโรคประจำตัว (เลือกได้หลายรายการ)",
+        options=[
+            "โรคไตเรื้อรัง (Chronic Kidney Disease)",
+            "โรคปอดอุดกั้นเรื้อรัง (Chronic Obstructive Pulmonary Disease)",
+            "โรคเบาหวาน (Diabetes Mellitus)",
+            "โรคตับ (Liver Disease)"
+        ],
+        help="เลือกโรคประจำตัวที่มี"
+    )
+    
+    comorbid_ckd = 1 if "โรคไตเรื้อรัง (Chronic Kidney Disease)" in comorbidities else 0
+    comorbid_copd = 1 if "โรคปอดอุดกั้นเรื้อรัง (Chronic Obstructive Pulmonary Disease)" in comorbidities else 0
+    comorbid_dm = 1 if "โรคเบาหวาน (Diabetes Mellitus)" in comorbidities else 0
+    comorbid_liver = 1 if "โรคตับ (Liver Disease)" in comorbidities else 0
+    
+    # 7. ICD-10
     st.markdown("### 🏷️ รหัสโรค ICD-10")
+    icd10_codes = st.multiselect(
+        "เลือกรหัส ICD-10 (เลือกได้หลายรายการ)",
+        options=ICD10_OPTIONS,
+        help="เลือกรหัสโรค ICD-10 ที่เกี่ยวข้อง"
+    )
+    icd10_count = len(icd10_codes)
     
-    col_icd1, col_icd2 = st.columns(2)
-    with col_icd1:
-        icd_10_0 = st.checkbox("ICD-10 Code 0", help="รหัสโรคประเภทที่ 0")
-        icd_10_3 = st.checkbox("ICD-10 Code 3", help="รหัสโรคประเภทที่ 3")
-    
-    with col_icd2:
-        icd_10_4 = st.checkbox("ICD-10 Code 4", help="รหัสโรคประเภทที่ 4")
-        icd_10_5 = st.checkbox("ICD-10 Code 5", help="รหัสโรคประเภทที่ 5")
-    
-    st.markdown("### 🦠 โรคประจำตัว")
-    
-    col_disease1, col_disease2 = st.columns(2)
-    with col_disease1:
-        pos_disease_0 = st.checkbox(
-            "โรคประจำตัว (Positive Disease)",
-            help="มีโรคประจำตัวหรือไม่"
-        )
-    
-    with col_disease2:
-        hiv_0 = st.checkbox(
-            "ติดเชื้อ HIV (HIV Infection)",
-            help="ติดเชื้อ HIV หรือไม่"
-        )
+    st.markdown("---")
     
     # ปุ่มทำนาย
     predict_button = st.button("🔮 ทำนายผล", type="primary", use_container_width=True)
@@ -192,13 +318,17 @@ with col2:
     if predict_button:
         # เตรียมข้อมูลสำหรับทำนาย
         input_data = pd.DataFrame({
+            'gender': [gender_value],
             'age': [age],
-            'ICD_10_0': [int(icd_10_0)],
-            'ICD_10_3': [int(icd_10_3)],
-            'ICD_10_4': [int(icd_10_4)],
-            'ICD_10_5': [int(icd_10_5)],
-            'pos_disease_0': [int(pos_disease_0)],
-            'HIV_0': [int(hiv_0)]
+            'weight': [weight],
+            'site_pulmonary': [site_pulmonary],
+            'site_extrapulmonary': [site_extrapulmonary],
+            'hiv_status': [hiv_status_value],
+            'comorbid_ckd': [comorbid_ckd],
+            'comorbid_copd': [comorbid_copd],
+            'comorbid_dm': [comorbid_dm],
+            'comorbid_liver': [comorbid_liver],
+            'icd10_count': [icd10_count]
         })
         
         # ทำนายด้วย threshold = 0.6
@@ -210,110 +340,146 @@ with col2:
                 '<div class="prediction-box success-box">✅ คาดการณ์: รอดชีวิต (Success)</div>',
                 unsafe_allow_html=True
             )
-            result_icon = "✅"
             result_text = "รอดชีวิต"
-            result_color = "#28a745"
+            result_color = "#667eea"
         else:
             st.markdown(
                 '<div class="prediction-box death-box">⚠️ คาดการณ์: เสียชีวิต (Death)</div>',
                 unsafe_allow_html=True
             )
-            result_icon = "⚠️"
             result_text = "เสียชีวิต"
-            result_color = "#dc3545"
+            result_color = "#f5576c"
         
         # แสดงความน่าจะเป็น
         st.markdown("### 📊 ความน่าจะเป็น (Probability)")
         
-        prob_df = pd.DataFrame({
-            'สถานะ': ['รอดชีวิต (Success)', 'เสียชีวิต (Death)'],
-            'ความน่าจะเป็น': [probabilities[0], probabilities[1]],
-            'เปอร์เซ็นต์': [f"{probabilities[0]*100:.2f}%", f"{probabilities[1]*100:.2f}%"]
-        })
-        
-        st.dataframe(prob_df, use_container_width=True, hide_index=True)
+        prob_col1, prob_col2 = st.columns(2)
+        with prob_col1:
+            st.metric(
+                label="🟢 รอดชีวิต",
+                value=f"{probabilities[0]*100:.2f}%"
+            )
+        with prob_col2:
+            st.metric(
+                label="🔴 เสียชีวิต",
+                value=f"{probabilities[1]*100:.2f}%"
+            )
         
         # สร้างกราฟแท่ง
         fig = go.Figure(data=[
             go.Bar(
                 x=['รอดชีวิต', 'เสียชีวิต'],
                 y=[probabilities[0]*100, probabilities[1]*100],
-                marker_color=['#28a745', '#dc3545'],
+                marker_color=['#667eea', '#f5576c'],
                 text=[f"{probabilities[0]*100:.1f}%", f"{probabilities[1]*100:.1f}%"],
-                textposition='outside'
+                textposition='outside',
+                textfont=dict(size=16, color='white')
             )
         ])
         
         fig.update_layout(
-            title="ความน่าจะเป็นของแต่ละผลลัพธ์",
+            title=dict(
+                text="ความน่าจะเป็นของแต่ละผลลัพธ์",
+                font=dict(color='white', size=18)
+            ),
             yaxis_title="เปอร์เซ็นต์ (%)",
             xaxis_title="สถานะ",
             height=400,
-            showlegend=False
+            showlegend=False,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            yaxis=dict(gridcolor='rgba(255,255,255,0.2)'),
+            xaxis=dict(gridcolor='rgba(255,255,255,0.2)')
         )
         
         # เพิ่มเส้น threshold
         fig.add_hline(
             y=60, 
             line_dash="dash", 
-            line_color="red",
+            line_color="yellow",
+            line_width=2,
             annotation_text="Threshold = 60%",
-            annotation_position="right"
+            annotation_position="right",
+            annotation_font_color="yellow"
         )
         
         st.plotly_chart(fig, use_container_width=True)
         
         # คำอธิบายเพิ่มเติม
-        st.markdown("### 💡 คำอธิบาย")
-        st.info(f"""
-        **วิธีการตัดสินใจ:**
-        - ระบบใช้ **Threshold = 0.6 (60%)**
-        - ถ้าความน่าจะเป็นของการเสียชีวิต ≥ 60% → คาดการณ์ว่า **เสียชีวิต**
-        - ถ้าความน่าจะเป็นของการเสียชีวิต < 60% → คาดการณ์ว่า **รอดชีวิต**
-        
-        **ผลการทำนาย:**
-        - ความน่าจะเป็นของการเสียชีวิต: **{probabilities[1]*100:.2f}%**
-        - ผลการทำนาย: **{result_text}** {result_icon}
-        """)
+        st.markdown(f"""
+        <div class="info-card">
+        <h3>💡 คำอธิบาย</h3>
+        <p><strong>วิธีการตัดสินใจ:</strong></p>
+        <ul>
+        <li>ระบบใช้ <strong>Threshold = 0.6 (60%)</strong></li>
+        <li>ถ้าความน่าจะเป็นของการเสียชีวิต ≥ 60% → คาดการณ์ว่า <strong>เสียชีวิต</strong></li>
+        <li>ถ้าความน่าจะเป็นของการเสียชีวิต < 60% → คาดการณ์ว่า <strong>รอดชีวิต</strong></li>
+        </ul>
+        <p><strong>ผลการทำนาย:</strong></p>
+        <ul>
+        <li>ความน่าจะเป็นของการเสียชีวิต: <strong>{probabilities[1]*100:.2f}%</strong></li>
+        <li>ผลการทำนาย: <strong>{result_text}</strong></li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
         
         # แสดงข้อมูลที่ใช้ทำนาย
         with st.expander("🔍 ดูข้อมูลที่ใช้ในการทำนาย"):
-            st.dataframe(input_data.T, use_container_width=True)
+            summary_data = {
+                'ตัวแปร': [
+                    'เพศ', 'อายุ', 'น้ำหนัก', 'ตำแหน่งโรค', 
+                    'สถานะ HIV', 'โรคประจำตัว', 'รหัส ICD-10'
+                ],
+                'ค่า': [
+                    gender,
+                    f"{age} ปี",
+                    f"{weight} kg",
+                    site_disease,
+                    hiv_status,
+                    ", ".join(comorbidities) if comorbidities else "ไม่มี",
+                    f"{icd10_count} รายการ"
+                ]
+            }
+            st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
     
     else:
-        st.info("👈 กรุณากรอกข้อมูลทางด้านซ้าย แล้วกดปุ่ม 'ทำนายผล'")
-        
-        # แสดงตัวอย่างการทำงาน
-        st.markdown("### 📖 วิธีการใช้งาน")
         st.markdown("""
-        1. **กรอกอายุ** ของผู้ป่วย
-        2. **เลือกรหัสโรค ICD-10** ที่เกี่ยวข้อง
-        3. **ระบุโรคประจำตัว** และสถานะการติดเชื้อ HIV
-        4. **กดปุ่มทำนายผล** เพื่อดูผลการคาดการณ์
-        
-        **หมายเหตุ:**
-        - ระบบใช้โมเดล XGBoost Classifier
-        - Threshold = 0.6 สำหรับการตัดสินใจ
-        - ผลลัพธ์แบ่งเป็น 2 กลุ่ม: รอดชีวิต (0) และเสียชีวิต (1)
-        """)
+        <div class="info-card">
+        <p>👈 กรุณากรอกข้อมูลทางด้านซ้าย แล้วกดปุ่ม 'ทำนายผล'</p>
+        <br>
+        <h3>📖 วิธีการใช้งาน</h3>
+        <ol>
+        <li><strong>เพศ</strong> - เลือกเพศของผู้ป่วย</li>
+        <li><strong>อายุ</strong> - ระบุอายุเป็นตัวเลข</li>
+        <li><strong>น้ำหนัก</strong> - ระบุน้ำหนักเป็นกิโลกรัม</li>
+        <li><strong>ตำแหน่งโรค</strong> - เลือกว่าเป็นวัณโรคในปอดหรือนอกปอด</li>
+        <li><strong>สถานะ HIV</strong> - ระบุสถานะการติดเชื้อ HIV</li>
+        <li><strong>โรคประจำตัว</strong> - เลือกโรคประจำตัวที่มี (เลือกได้หลายรายการ)</li>
+        <li><strong>รหัส ICD-10</strong> - เลือกรหัสโรคที่เกี่ยวข้อง (เลือกได้หลายรายการ)</li>
+        <li><strong>กดปุ่มทำนายผล</strong> เพื่อดูผลการคาดการณ์</li>
+        </ol>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Sidebar - ข้อมูลเพิ่มเติม
 st.sidebar.markdown("## 📚 ข้อมูลโมเดล")
 st.sidebar.markdown("""
 **Model:** XGBoost Classifier
 
-**Selected Features:**
+**Features:**
+- Gender (เพศ)
 - Age (อายุ)
-- ICD-10 Codes (0, 3, 4, 5)
-- Positive Disease Status
-- HIV Status
+- Weight (น้ำหนัก)
+- Site of Disease (ตำแหน่งโรค)
+- HIV Status (สถานะ HIV)
+- Comorbidities (โรคประจำตัว)
+- ICD-10 Codes (รหัสโรค)
 
 **Hyperparameters:**
-- colsample_bytree: 0.7
 - learning_rate: 0.05
 - max_depth: 4
 - n_estimators: 300
-- scale_pos_weight: 2.98
 - **threshold: 0.6**
 
 **Target Classes:**
@@ -323,7 +489,7 @@ st.sidebar.markdown("""
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔬 เกี่ยวกับ Threshold")
-st.sidebar.info("""
+st.sidebar.markdown("""
 **Threshold = 0.6** หมายความว่า:
 
 ระบบจะคาดการณ์ว่าผู้ป่วยจะ
@@ -338,7 +504,7 @@ st.sidebar.info("""
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #666;'>
+<div style='text-align: center; color: white;'>
     <p>🏥 ระบบทำนายอัตรารอดชีวิตจากโรควัณโรคปอด | Tuberculosis Survival Prediction System</p>
     <p>⚠️ ระบบนี้เป็นเครื่องมือช่วยตัดสินใจเท่านั้น ควรใช้ร่วมกับการวินิจฉัยของแพทย์</p>
 </div>
