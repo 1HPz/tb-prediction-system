@@ -261,7 +261,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 ติดต่อ (Contact)
 
 หากมีคำถามหรือข้อเสนอแนะ กรุณาติดต่อ:
-- 📧 Email: your-email@example.com
+- 📧 Email: mochi23102548@gmail.com
 - 🐛 Issues: [GitHub Issues](https://github.com/your-username/tb-prediction-system/issues)
 
 ---
