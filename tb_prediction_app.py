@@ -188,7 +188,7 @@ def create_dummy_model():
         'comorbid_copd': np.random.choice([0, 1], n_samples),
         'comorbid_dm': np.random.choice([0, 1], n_samples),
         'comorbid_liver': np.random.choice([0, 1], n_samples),
-        'icd10_count': np.random.randint(0, 5, n_samples)
+        'icd10_selected': np.random.choice([0, 1], n_samples)
     })
     
     # สร้าง target แบบมีความสัมพันธ์กับ features
@@ -300,12 +300,12 @@ with col1:
     
     # 7. ICD-10
     st.markdown("### 🏷️ รหัสโรค ICD-10")
-    icd10_codes = st.multiselect(
-        "เลือกรหัส ICD-10 (เลือกได้หลายรายการ)",
-        options=ICD10_OPTIONS,
+    icd10_code = st.selectbox(
+        "เลือกรหัส ICD-10 (เลือกได้ 1 รายการ)",
+        options=["ไม่ระบุ"] + ICD10_OPTIONS,
         help="เลือกรหัสโรค ICD-10 ที่เกี่ยวข้อง"
     )
-    icd10_count = len(icd10_codes)
+    icd10_selected = 0 if icd10_code == "ไม่ระบุ" else 1
     
     st.markdown("---")
     
@@ -328,7 +328,7 @@ with col2:
             'comorbid_copd': [comorbid_copd],
             'comorbid_dm': [comorbid_dm],
             'comorbid_liver': [comorbid_liver],
-            'icd10_count': [icd10_count]
+            'icd10_selected': [icd10_selected]
         })
         
         # ทำนายด้วย threshold = 0.6
@@ -438,7 +438,7 @@ with col2:
                     site_disease,
                     hiv_status,
                     ", ".join(comorbidities) if comorbidities else "ไม่มี",
-                    f"{icd10_count} รายการ"
+                    icd10_code
                 ]
             }
             st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
@@ -456,7 +456,7 @@ with col2:
         <li><strong>ตำแหน่งโรค</strong> - เลือกว่าเป็นวัณโรคในปอดหรือนอกปอด</li>
         <li><strong>สถานะ HIV</strong> - ระบุสถานะการติดเชื้อ HIV</li>
         <li><strong>โรคประจำตัว</strong> - เลือกโรคประจำตัวที่มี (เลือกได้หลายรายการ)</li>
-        <li><strong>รหัส ICD-10</strong> - เลือกรหัสโรคที่เกี่ยวข้อง (เลือกได้หลายรายการ)</li>
+        <li><strong>รหัส ICD-10</strong> - เลือกรหัสโรคที่เกี่ยวข้อง (เลือกได้ 1 รายการ)</li>
         <li><strong>กดปุ่มทำนายผล</strong> เพื่อดูผลการคาดการณ์</li>
         </ol>
         </div>
