@@ -12,12 +12,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS สำหรับธีมสีเกรเดียนท์และตกแต่ง
+# CSS สำหรับธีมสีและตกแต่ง
 st.markdown("""
 <style>
-    /* Gradient Background */
+    /* Solid Background */
     .stApp {
-        background: linear-gradient(to bottom, #1c2396 0%, #282a4e 50%, #282a4e 100%);
+        background: #282a4e;
     }
     
     /* Main content styling */
@@ -54,12 +54,12 @@ st.markdown("""
     }
     
     .success-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #6aef4f;
         color: white;
     }
     
     .death-box {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: #ff352e;
         color: white;
     }
     
@@ -98,7 +98,7 @@ st.markdown("""
     
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(to bottom, #1c2396 0%, #282a4e 100%);
+        background: #282a4e;
     }
     
     section[data-testid="stSidebar"] .stMarkdown {
@@ -341,14 +341,14 @@ with col2:
                 unsafe_allow_html=True
             )
             result_text = "รอดชีวิต"
-            result_color = "#667eea"
+            result_color = "#6aef4f"
         else:
             st.markdown(
                 '<div class="prediction-box death-box">⚠️ คาดการณ์: เสียชีวิต (Death)</div>',
                 unsafe_allow_html=True
             )
             result_text = "เสียชีวิต"
-            result_color = "#f5576c"
+            result_color = "#ff352e"
         
         # แสดงความน่าจะเป็น
         st.markdown("### 📊 ความน่าจะเป็น (Probability)")
@@ -370,7 +370,7 @@ with col2:
             go.Bar(
                 x=['รอดชีวิต', 'เสียชีวิต'],
                 y=[probabilities[0]*100, probabilities[1]*100],
-                marker_color=['#667eea', '#f5576c'],
+                marker_color=['#6aef4f', '#ff352e'],
                 text=[f"{probabilities[0]*100:.1f}%", f"{probabilities[1]*100:.1f}%"],
                 textposition='outside',
                 textfont=dict(size=16, color='white')
@@ -475,12 +475,6 @@ st.sidebar.markdown("""
 - HIV Status (สถานะ HIV)
 - Comorbidities (โรคประจำตัว)
 - ICD-10 Codes (รหัสโรค)
-
-**Hyperparameters:**
-- learning_rate: 0.05
-- max_depth: 4
-- n_estimators: 300
-- **threshold: 0.6**
 
 **Target Classes:**
 - 0: รอดชีวิต (Success)
