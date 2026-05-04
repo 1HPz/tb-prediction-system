@@ -272,13 +272,13 @@ with col1:
     site_extrapulmonary = 1 if site_disease in ["นอกปอด", "ในและนอกปอด"] else 0
     
     # 5. HIV status
-    hiv_status = st.selectbox(
+    hiv_status = st.radio(
         "🦠 สถานะ HIV (HIV Status)",
-        options=["Negative", "Positive", "รอผล", "ไม่ระบุ"],
+        options=["Negative", "Positive"],
+        horizontal=True,
         help="เลือกสถานะการติดเชื้อ HIV"
     )
-    hiv_status_map = {"Negative": 0, "Positive": 1, "รอผล": 2, "ไม่ระบุ": 3}
-    hiv_status_value = hiv_status_map[hiv_status]
+    hiv_status_value = 0 if hiv_status == "Negative" else 1
     
     # 6. Comorbidities
     st.markdown("### 🏥 โรคประจำตัว (Comorbidities)")
