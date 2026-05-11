@@ -393,36 +393,19 @@ with col2:
             xaxis=dict(gridcolor='rgba(255,255,255,0.2)')
         )
         
-        # เพิ่มเส้น threshold
-        fig.add_hline(
-            y=60, 
-            line_dash="dash", 
-            line_color="yellow",
-            line_width=2,
-            annotation_text="Threshold = 60%",
-            annotation_position="right",
-            annotation_font_color="yellow"
-        )
-        
         st.plotly_chart(fig, use_container_width=True)
         
-        # คำอธิบายเพิ่มเติม
-        st.markdown(f"""
-        <div class="info-card">
-        <h3>💡 คำอธิบาย</h3>
-        <p><strong>วิธีการตัดสินใจ:</strong></p>
-        <ul>
-        <li>ระบบใช้ <strong>Threshold = 0.6 (60%)</strong></li>
-        <li>ถ้าความน่าจะเป็นของการเสียชีวิต ≥ 60% → คาดการณ์ว่า <strong>เสียชีวิต</strong></li>
-        <li>ถ้าความน่าจะเป็นของการเสียชีวิต < 60% → คาดการณ์ว่า <strong>รอดชีวิต</strong></li>
-        </ul>
-        <p><strong>ผลการทำนาย:</strong></p>
-        <ul>
-        <li>ความน่าจะเป็นของการเสียชีวิต: <strong>{probabilities[1]*100:.2f}%</strong></li>
-        <li>ผลการทำนาย: <strong>{result_text}</strong></li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        # แก้ไขส่วน f""" ... """ ให้เหลือแค่ผลการทำนาย
+st.markdown(f"""
+<div class="info-card">
+<h3>💡 คำอธิบาย</h3>
+<p><strong>ผลการทำนาย:</strong></p>
+<ul>
+<li>ความน่าจะเป็นของการเสียชีวิต: <strong>{probabilities[1]*100:.2f}%</strong></li>
+<li>ผลการทำนาย: <strong>{result_text}</strong></li>
+</ul>
+</div>
+""", unsafe_allow_html=True)
         
         # แสดงข้อมูลที่ใช้ทำนาย
         with st.expander("🔍 ดูข้อมูลที่ใช้ในการทำนาย"):
@@ -479,20 +462,6 @@ st.sidebar.markdown("""
 **Target Classes:**
 - 0: รอดชีวิต (Success)
 - 1: เสียชีวิต (Death)
-""")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔬 เกี่ยวกับ Threshold")
-st.sidebar.markdown("""
-**Threshold = 0.6** หมายความว่า:
-
-ระบบจะคาดการณ์ว่าผู้ป่วยจะ
-เสียชีวิต เมื่อความน่าจะเป็น
-ของการเสียชีวิต ≥ 60%
-
-การตั้งค่า threshold สูงขึ้น
-จะทำให้ระบบระมัดระวังมากขึ้น
-ในการพยากรณ์ผลลัพธ์ที่เลวร้าย
 """)
 
 # Footer
