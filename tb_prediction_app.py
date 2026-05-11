@@ -341,29 +341,21 @@ with col2:
                 unsafe_allow_html=True
             )
             result_text = "รอดชีวิต"
-            result_color = "#6aef4f"
         else:
             st.markdown(
                 '<div class="prediction-box death-box">⚠️ คาดการณ์: เสียชีวิต (Death)</div>',
                 unsafe_allow_html=True
             )
             result_text = "เสียชีวิต"
-            result_color = "#ff352e"
         
         # แสดงความน่าจะเป็น
         st.markdown("### 📊 ความน่าจะเป็น (Probability)")
         
         prob_col1, prob_col2 = st.columns(2)
         with prob_col1:
-            st.metric(
-                label="🟢 รอดชีวิต",
-                value=f"{probabilities[0]*100:.2f}%"
-            )
+            st.metric(label="🟢 รอดชีวิต", value=f"{probabilities[0]*100:.2f}%")
         with prob_col2:
-            st.metric(
-                label="🔴 เสียชีวิต",
-                value=f"{probabilities[1]*100:.2f}%"
-            )
+            st.metric(label="🔴 เสียชีวิต", value=f"{probabilities[1]*100:.2f}%")
         
         # สร้างกราฟแท่ง
         fig = go.Figure(data=[
@@ -378,10 +370,7 @@ with col2:
         ])
         
         fig.update_layout(
-            title=dict(
-                text="ความน่าจะเป็นของแต่ละผลลัพธ์",
-                font=dict(color='white', size=18)
-            ),
+            title=dict(text="ความน่าจะเป็นของแต่ละผลลัพธ์", font=dict(color='white', size=18)),
             yaxis_title="เปอร์เซ็นต์ (%)",
             xaxis_title="สถานะ",
             height=400,
@@ -395,34 +384,23 @@ with col2:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # แก้ไขส่วน f""" ... """ ให้เหลือแค่ผลการทำนาย
-st.markdown(f"""
-<div class="info-card">
-<h3>💡 คำอธิบาย</h3>
-<p><strong>ผลการทำนาย:</strong></p>
-<ul>
-<li>ความน่าจะเป็นของการเสียชีวิต: <strong>{probabilities[1]*100:.2f}%</strong></li>
-<li>ผลการทำนาย: <strong>{result_text}</strong></li>
-</ul>
-</div>
-""", unsafe_allow_html=True)
+        # --- จุดที่แก้ไขการย่อหน้า (ต้องตรงกับ st.plotly_chart) ---
+        st.markdown(f"""
+        <div class="info-card">
+        <h3>💡 คำอธิบาย</h3>
+        <p><strong>ผลการทำนาย:</strong></p>
+        <ul>
+        <li>ความน่าจะเป็นของการเสียชีวิต: <strong>{probabilities[1]*100:.2f}%</strong></li>
+        <li>ผลการทำนาย: <strong>{result_text}</strong></li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # แสดงข้อมูลที่ใช้ทำนาย
-    with st.expander("🔍 ดูข้อมูลที่ใช้ในการทำนาย"):
+        with st.expander("🔍 ดูข้อมูลที่ใช้ในการทำนาย"):
             summary_data = {
-                'ตัวแปร': [
-                    'เพศ', 'อายุ', 'น้ำหนัก', 'ตำแหน่งโรค', 
-                    'สถานะ HIV', 'โรคประจำตัว', 'รหัส ICD-10'
-                ],
-                'ค่า': [
-                    gender,
-                    f"{age} ปี",
-                    f"{weight} kg",
-                    site_disease,
-                    hiv_status,
-                    ", ".join(comorbidities) if comorbidities else "ไม่มี",
-                    icd10_code
-                ]
+                'ตัวแปร': ['เพศ', 'อายุ', 'น้ำหนัก', 'ตำแหน่งโรค', 'สถานะ HIV', 'โรคประจำตัว', 'รหัส ICD-10'],
+                'ค่า': [gender, f"{age} ปี", f"{weight} kg", site_disease, hiv_status, 
+                       ", ".join(comorbidities) if comorbidities else "ไม่มี", icd10_code]
             }
             st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
     
